@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ashrama Caretaker - Medicine Reminder</title>
+
+<style>
+    body {
+        font-family: "Poppins", sans-serif;
+        background: linear-gradient(to right, #6a11cb, #2575fc);
+        margin: 0;
+    }
+
+    header {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        color: white;
+        padding: 22px;
+        text-align: center;
+        font-size: 32px;
+        font-weight: 600;
+    }
+
+    .container {
+        width: 90%;
+        max-width: 900px;
+        margin: 25px auto;
+        background: white;
+        padding: 25px;
+        border-radius: 15px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    }
+
+    input, button, select {
+        padding: 12px;
+        width: 100%;
+        margin-top: 10px;
+        font-size: 16px;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+    }
+
+    button {
+        cursor: pointer;
+        background: #2f5fa3;
+        border: none;
+        color: white;
+    }
+
+    .alarm-btn {
+        background: #ff9800;
+        font-size: 18px;
+        margin-bottom: 15px;
+    }
+
+    .wa-all-btn {
+        background: #25D366;
+        margin-top: 15px;
+        font-size: 18px;
+    }
+
+    .person {
+        background: #eef3f9;
+        padding: 15px;
+        margin: 12px 0;
+        border-left: 7px solid #2f5fa3;
+        border-radius: 12px;
+    }
+</style>
+</head>
+
+<body>
+
+<header>Ashrama Caretaker – Medicine Reminder</header>
+
+<div class="container">
+
+    <!-- ENABLE ALARM -->
+    <button class="alarm-btn" onclick="enableAlarmSound()">
+        Enable Alarm Sound
+    </button>
+
+    <h2>Add Elderly Person</h2>
+
+    <label>Name:</label>
+    <input type="text" id="name">
+
+    <label>Medicine:</label>
+    <input type="text" id="medicine">
+
+    <label>Medicine Time:</label>
+    <input type="time" id="time">
+
+    <button onclick="addPerson()">Add</button>
+
+    <hr>
+
+    <button class="wa-all-btn" onclick="sendAllWhatsApp()">
+        Send ALL Data to WhatsApp
+    </button>
+
+    <hr>
+
+    <h2>Elderly List</h2>
+    <div id="list"></div>
+
+</div>
+
+<script>
+    const caretakerNumber = "919353426054";
+    let people = JSON.parse(localStorage.getItem("people")) || [];
+
+    let alarmAudio;
+    let alarmEnabled = false;
+    let remindedToday = {};
+
+    // ✅ ENABLE ALARM SOUND (WORKING)
+    function enableAlarmSound() {
+        alarmAudio = new Audio(
+            "https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg"
+        );
+
+        alarmAudio.play().then(() => {
+            alarmAudio.pause();
+            alarmAudio.currentTime = 0;
+            alarmEnabled = true;
+            alert("✅ Alarm sound enabled successfully");
+        }).catch(() => {
+            alert(
+                "❌ Alarm blocked!\n\n" +
+                "Open this page using Live Server or HTTPS\n" +
+                "Then click Enable Alarm Sound again."
+            );
+        });
+    }
+
+    function addPerson() {
+        const name = document.getElementById("name").value;
+        const medicine = document.getElementById("medicine").value;
+        const time = document.getElementById("time").value;
+
+        if (!name || !medicine || !time) {
+            alert("Fill all fields!");
+            return;
+        }
+
+        people.push({ name, medicine, time });
+        localStorage.setItem("people", JSON.stringify(people));
+        render();
+
+        document.getElementById("name").value = "";
+        document.getElementById("medicine").value = "";
+        document.getElementById("time").value = "";
+    }
+
+    function render() {
+        const list = document.getElementById("list");
+        list.innerHTML = "";
+
+        people.forEach(p => {
+            list.innerHTML += `
+                <div class="person">
+                    <b>Name:</b> ${p.name}<br>
+                    <b>Medicine:</b> ${p.medicine}<br>
+                    <b>Time:</b> ${p.time}
+                </div>
+            `;
+        });
+    }
+
+    render();
+
+    function sendAllWhatsApp() {
+        let msg = "";
+        people.forEach((p, i) => {
+            msg += `${i + 1}. ${p.name} - ${p.medicine} at ${p.time}\n`;
+        });
+
+        window.open(
+            `https://wa.me/${caretakerNumber}?text=${encodeURIComponent(msg)}`,
+            "_blank"
+        );
+    }
+
+    // 🔔 REMINDER + WHATSAPP OPEN
+    function checkMedicineTime() {
+        const now = new Date();
+        const currentTime =
+            now.getHours().toString().padStart(2, "0") + ":" +
+            now.getMinutes().toString().padStart(2, "0");
+
+        people.forEach(p => {
+            const key = p.name + p.time + now.toDateString();
+
+            if (p.time === currentTime && !remindedToday[key]) {
+                remindedToday[key] = true;
+
+                if (alarmEnabled) {
+                    alarmAudio.play();
+                }
+
+                alert(
+                    `⏰ Medicine Time!\n\n` +
+                    `Name: ${p.name}\n` +
+                    `Medicine: ${p.medicine}\n\n` +
+                    `Press OK to open WhatsApp`
+                );
+
+                const msg =
+                    `Medicine Reminder\n` +
+                    `Name: ${p.name}\n` +
+                    `Medicine: ${p.medicine}\n` +
+                    `Time: ${p.time}`;
+
+                window.open(
+                    `https://wa.me/${caretakerNumber}?text=${encodeURIComponent(msg)}`,
+                    "_blank"
+                );
+            }
+        });
+    }
+
+    // check every 10 seconds
+    setInterval(checkMedicineTime, 10000);
+</script>
+
+</body>
+</html>
